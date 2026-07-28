@@ -1,0 +1,58 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+}
+
+// JitPack은 GitHub 사용자명 기반으로 groupId를 자동 설정하므로
+// 여기서는 com.github.{사용자명} 형식을 사용한다.
+group = 'com.github.sejinheo'
+version = '0.1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    springBootVersion = '3.3.0'
+}
+
+dependencies {
+    // Spring 관련 의존성은 compileOnly로 선언한다.
+    // 이 라이브러리를 쓰는 서비스가 이미 Spring Boot 런타임을 갖고 있으므로,
+    // 여기서 implementation으로 끌고 가면 버전 충돌이 날 수 있다.
+    compileOnly "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    compileOnly "org.springframework.boot:spring-boot-starter-data-redis:${springBootVersion}"
+    compileOnly "org.springframework.boot:spring-boot-autoconfigure:${springBootVersion}"
+    compileOnly "org.springframework.boot:spring-boot-starter-aop:${springBootVersion}"
+    compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
+
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor:${springBootVersion}"
+
+    // 테스트에는 실제 구현체가 다 필요하다
+    testImplementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
+    testImplementation "org.springframework.boot:spring-boot-starter-data-redis:${springBootVersion}"
+    testImplementation "org.springframework.boot:spring-boot-starter-aop:${springBootVersion}"
+    testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.8'
+    testImplementation 'org.testcontainers:testcontainers:1.19.8'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// JitPack이 빌드 시 이 블록을 사용해서 artifacts를 생성한다.
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+}
