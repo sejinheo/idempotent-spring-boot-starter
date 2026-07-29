@@ -6,7 +6,7 @@ plugins {
 // JitPack은 GitHub 사용자명 기반으로 groupId를 자동 설정하므로
 // 여기서는 com.github.{사용자명} 형식을 사용한다.
 group = 'com.github.sejinheo'
-version = '0.1.0-SNAPSHOT'
+version = '0.2.1'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
