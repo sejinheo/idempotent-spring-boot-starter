@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.sejinheo:idempotent-spring-boot-starter:0.1.0'
+    implementation 'com.github.sejinheo:idempotent-spring-boot-starter:v0.2.1'
 }
 ```
 
