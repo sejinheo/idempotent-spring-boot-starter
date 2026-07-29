@@ -98,12 +98,10 @@ public class HttpIdempotentAspect {
                 int statusCode = responseEntity.getStatusCode().value();
                 Object body = responseEntity.getBody();
                 String bodyJson = (body == null) ? null : objectMapper.writeValueAsString(body);
-                String bodyClassName = (body == null) ? null : body.getClass().getName();
-                completed.complete(statusCode, bodyJson, bodyClassName);
+                completed.complete(statusCode, bodyJson);
             } else {
                 String bodyJson = (result == null) ? null : objectMapper.writeValueAsString(result);
-                String bodyClassName = (result == null) ? null : result.getClass().getName();
-                completed.complete(200, bodyJson, bodyClassName);
+                completed.complete(200, bodyJson);
             }
             storage.complete(redisKey, completed, ttl);
             return result;

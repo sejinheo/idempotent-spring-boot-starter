@@ -33,9 +33,6 @@ public class IdempotencyResult {
     /** 응답 바디를 JSON 문자열로 직렬화한 값 (COMPLETED일 때만 유효) */
     private String bodyJson;
 
-    /** 응답 바디의 실제 클래스명. 재생 시 이 타입으로 역직렬화한다. */
-    private String bodyClassName;
-
     public IdempotencyResult() {
     }
 
@@ -46,11 +43,10 @@ public class IdempotencyResult {
         return result;
     }
 
-    public IdempotencyResult complete(int httpStatus, String bodyJson, String bodyClassName) {
+    public IdempotencyResult complete(int httpStatus, String bodyJson) {
         this.status = Status.COMPLETED;
         this.httpStatus = httpStatus;
         this.bodyJson = bodyJson;
-        this.bodyClassName = bodyClassName;
         return this;
     }
 
@@ -86,11 +82,4 @@ public class IdempotencyResult {
         this.bodyJson = bodyJson;
     }
 
-    public String getBodyClassName() {
-        return bodyClassName;
-    }
-
-    public void setBodyClassName(String bodyClassName) {
-        this.bodyClassName = bodyClassName;
-    }
 }
