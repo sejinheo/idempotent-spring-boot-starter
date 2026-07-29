@@ -19,7 +19,8 @@ dependencies {
 ```yaml
 idempotency:
   key-prefix: "order-service:idempotency:"  # 서비스별로 다르게 설정 (Redis 키 충돌 방지)
-  ttl-hours: 24
+  ttl-hours: 24                              # COMPLETED 응답 보관 TTL (기본: 24시간)
+  in-progress-ttl-seconds: 30               # 처리 중 상태 TTL (기본: 30초, API 처리 시간에 맞게 조정)
 
 spring:
   data:
@@ -65,7 +66,7 @@ Idempotency-Key: 3f29b6b2-1c2a-4e2e-9a2e-1234567890ab
 - HTTP 요청 전용 (Kafka 등 비-HTTP 컨텍스트 미지원)
 - 순수 DTO 반환 및 `ResponseEntity<T>` 반환 모두 지원
 - 키는 헤더 값 하나만 사용 (SpEL 키 미지원)
-- TTL은 전역 설정(`idempotency.ttl-hours`)으로 고정
+- TTL은 전역 설정으로 고정 (COMPLETED: `ttl-hours`, IN_PROGRESS: `in-progress-ttl-seconds`)
 - 동시 요청은 REJECT만 지원 (409 반환)
 - Redis 장애 시 요청 실패 처리 (FAIL_CLOSED 고정, 503 반환)
 
