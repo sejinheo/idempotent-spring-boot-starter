@@ -65,12 +65,13 @@ public class HttpIdempotentAspect {
         }
 
         String redisKey = properties.getKeyPrefix() + headerKey;
-        Duration ttl = Duration.ofHours(properties.getTtlHours());
+        Duration inProgressTtl = Duration.ofSeconds(properties.getInProgressTtlSeconds());
+        Duration completedTtl = Duration.ofHours(properties.getTtlHours());
 
         Object requestBody = findRequestBodyArgument(joinPoint);
         String bodyHash = hash(requestBody);
 
-        boolean claimed = storage.tryClaim(redisKey, IdempotencyResult.inProgress(bodyHash), ttl);
+        boolean claimed = storage.tryClaim(redisKey, IdempotencyResult.inProgress(bodyHash), inProgressTtl);
 
         if (!claimed) {
             IdempotencyResult existing = storage.find(redisKey)
@@ -103,7 +104,7 @@ public class HttpIdempotentAspect {
                 String bodyJson = (result == null) ? null : objectMapper.writeValueAsString(result);
                 completed.complete(200, bodyJson);
             }
-            storage.complete(redisKey, completed, ttl);
+            storage.complete(redisKey, completed, completedTtl);
             return result;
         } catch (Throwable ex) {
             // 실패한 요청은 캐싱하지 않고 재시도를 허용한다
