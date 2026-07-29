@@ -1,6 +1,7 @@
 package com.github.sejinheo.idempotent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -13,24 +14,33 @@ import org.springframework.data.redis.core.StringRedisTemplate;
  * 있을 때 자동으로 IdempotencyStorage와 HttpIdempotentAspect 빈이 등록된다.
  * (별도 설정 없이도 기본값으로 동작하되, application.yml의 idempotency.*
  * 프로퍼티로 key-prefix/ttl-hours를 조정할 수 있다.)
+ *
+ * ObjectMapper: 사용자 프로젝트에 ObjectMapper 빈이 있으면 그것을 재사용하고,
+ * 없으면 라이브러리 내부에서 기본 ObjectMapper를 생성해서 사용한다.
+ * 사용자가 별도 JacksonConfig를 만들 필요가 없다.
  */
 @AutoConfiguration
 @ConditionalOnClass(StringRedisTemplate.class)
 @EnableConfigurationProperties(IdempotencyProperties.class)
 public class IdempotencyAutoConfiguration {
 
+    private ObjectMapper resolveObjectMapper(ObjectProvider<ObjectMapper> provider) {
+        ObjectMapper existing = provider.getIfAvailable();
+        return (existing != null) ? existing : new ObjectMapper();
+    }
+
     @Bean
     @ConditionalOnMissingBean
     public IdempotencyStorage idempotencyStorage(StringRedisTemplate redisTemplate,
-                                                   ObjectMapper objectMapper) {
-        return new RedisIdempotencyStorage(redisTemplate, objectMapper);
+                                                   ObjectProvider<ObjectMapper> objectMapperProvider) {
+        return new RedisIdempotencyStorage(redisTemplate, resolveObjectMapper(objectMapperProvider));
     }
 
     @Bean
     @ConditionalOnMissingBean
     public HttpIdempotentAspect httpIdempotentAspect(IdempotencyStorage idempotencyStorage,
                                                        IdempotencyProperties properties,
-                                                       ObjectMapper objectMapper) {
-        return new HttpIdempotentAspect(idempotencyStorage, properties, objectMapper);
+                                                       ObjectProvider<ObjectMapper> objectMapperProvider) {
+        return new HttpIdempotentAspect(idempotencyStorage, properties, resolveObjectMapper(objectMapperProvider));
     }
 }
