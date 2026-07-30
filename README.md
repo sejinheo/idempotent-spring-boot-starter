@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.sejinheo:idempotent-spring-boot-starter:v0.2.1'
+    implementation 'com.github.sejinheo:idempotent-spring-boot-starter:v0.3.0'
 }
 ```
 
@@ -21,6 +21,7 @@ idempotency:
   key-prefix: "order-service:idempotency:"  # 서비스별로 다르게 설정 (Redis 키 충돌 방지)
   ttl-hours: 24                              # COMPLETED 응답 보관 TTL (기본: 24시간)
   in-progress-ttl-seconds: 30               # 처리 중 상태 TTL (기본: 30초, API 처리 시간에 맞게 조정)
+  on-storage-failure: FAIL_CLOSED           # Redis 장애 시 동작 정책 (기본: FAIL_CLOSED)
 
 spring:
   data:
@@ -59,7 +60,8 @@ Idempotency-Key: 3f29b6b2-1c2a-4e2e-9a2e-1234567890ab
 | 같은 키 + 같은 바디 재요청 (처리 완료 후) | 캐시된 응답 그대로 재생 |
 | 같은 키 + 같은 바디 재요청 (처리 중) | 409 Conflict |
 | 같은 키 + 다른 바디 | 422 Unprocessable Entity |
-| Redis 장애 | 503 Service Unavailable |
+| Redis 장애 (`FAIL_CLOSED`) | 5xx 오류 |
+| Redis 장애 (`FAIL_OPEN`) | 정상 실행 (중복 실행 가능성 감수) |
 
 ## 지원 범위
 
@@ -68,7 +70,7 @@ Idempotency-Key: 3f29b6b2-1c2a-4e2e-9a2e-1234567890ab
 - 키는 헤더 값 하나만 사용 (SpEL 키 미지원)
 - TTL은 전역 설정으로 고정 (COMPLETED: `ttl-hours`, IN_PROGRESS: `in-progress-ttl-seconds`)
 - 동시 요청은 REJECT만 지원 (409 반환)
-- Redis 장애 시 요청 실패 처리 (FAIL_CLOSED 고정, 503 반환)
+- Redis 장애 시 동작은 `on-storage-failure`로 선택 (`FAIL_CLOSED`: 요청 실패, `FAIL_OPEN`: 중복 감수하고 통과)
 
 ## 로컬 테스트
 

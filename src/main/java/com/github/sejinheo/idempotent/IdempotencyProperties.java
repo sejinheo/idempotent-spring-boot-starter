@@ -11,6 +11,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *   key-prefix: "order-service:idempotency:"
  *   ttl-hours: 24
  *   in-progress-ttl-seconds: 30
+ *   on-storage-failure: FAIL_CLOSED
  */
 @ConfigurationProperties(prefix = "idempotency")
 public class IdempotencyProperties {
@@ -35,13 +36,22 @@ public class IdempotencyProperties {
      */
     private final long inProgressTtlSeconds;
 
+    /**
+     * Redis 등 저장소 장애 시 동작 정책.
+     * FAIL_CLOSED(기본): 예외를 그대로 던져서 요청을 실패 처리한다.
+     * FAIL_OPEN: 예외를 무시하고 요청을 통과시킨다. 중복 실행 가능성을 감수한다.
+     */
+    private final FailurePolicy onStorageFailure;
+
     public IdempotencyProperties(
             @DefaultValue("idempotency:") String keyPrefix,
             @DefaultValue("24") long ttlHours,
-            @DefaultValue("30") long inProgressTtlSeconds) {
+            @DefaultValue("30") long inProgressTtlSeconds,
+            @DefaultValue("FAIL_CLOSED") FailurePolicy onStorageFailure) {
         this.keyPrefix = keyPrefix;
         this.ttlHours = ttlHours;
         this.inProgressTtlSeconds = inProgressTtlSeconds;
+        this.onStorageFailure = onStorageFailure;
     }
 
     public String getKeyPrefix() {
@@ -54,5 +64,9 @@ public class IdempotencyProperties {
 
     public long getInProgressTtlSeconds() {
         return inProgressTtlSeconds;
+    }
+
+    public FailurePolicy getOnStorageFailure() {
+        return onStorageFailure;
     }
 }

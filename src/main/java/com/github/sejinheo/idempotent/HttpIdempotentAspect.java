@@ -3,6 +3,7 @@ package com.github.sejinheo.idempotent;
 import com.github.sejinheo.idempotent.exception.IdempotencyConflictException;
 import com.github.sejinheo.idempotent.exception.IdempotencyKeyMissingException;
 import com.github.sejinheo.idempotent.exception.IdempotencyKeyReuseException;
+import com.github.sejinheo.idempotent.exception.IdempotencyStorageException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -36,6 +37,12 @@ import java.util.HexFormat;
  *        - IN_PROGRESS면 동시 요청이므로 REJECT(409)
  *        - COMPLETED면 저장된 응답을 그대로 재생
  * 4. 메서드 실행 중 예외가 나면 키를 삭제해서 재시도를 허용한다.
+ *
+ * Redis 장애 정책 (on-storage-failure):
+ * - FAIL_CLOSED(기본): 저장소 예외를 그대로 던져서 요청을 실패 처리한다.
+ * - FAIL_OPEN: 저장소 예외를 무시하고 요청을 통과시킨다. 중복 실행 가능성을 감수한다.
+ *   tryClaim 실패 시 중복 체크 없이 proceed(), complete 실패 시 result를 그대로 반환.
+ *   release 실패는 정책에 무관하게 무시한다 (비즈니스 예외가 우선, TTL로 자동 만료).
  *
  * ResponseEntity 지원: 제네릭 타입 파라미터를 런타임에 추출해서 역직렬화하므로
  * ResponseEntity&lt;Void&gt;, ResponseEntity&lt;SomeDto&gt;, ResponseEntity&lt;List&lt;SomeDto&gt;&gt; 등
@@ -71,7 +78,15 @@ public class HttpIdempotentAspect {
         Object requestBody = findRequestBodyArgument(joinPoint);
         String bodyHash = hash(requestBody);
 
-        boolean claimed = storage.tryClaim(redisKey, IdempotencyResult.inProgress(bodyHash), inProgressTtl);
+        boolean claimed;
+        try {
+            claimed = storage.tryClaim(redisKey, IdempotencyResult.inProgress(bodyHash), inProgressTtl);
+        } catch (IdempotencyStorageException e) {
+            if (properties.getOnStorageFailure() == FailurePolicy.FAIL_OPEN) {
+                return joinPoint.proceed();
+            }
+            throw e;
+        }
 
         if (!claimed) {
             IdempotencyResult existing = storage.find(redisKey)
@@ -104,11 +119,23 @@ public class HttpIdempotentAspect {
                 String bodyJson = (result == null) ? null : objectMapper.writeValueAsString(result);
                 completed.complete(200, bodyJson);
             }
-            storage.complete(redisKey, completed, completedTtl);
+            try {
+                storage.complete(redisKey, completed, completedTtl);
+            } catch (IdempotencyStorageException e) {
+                if (properties.getOnStorageFailure() != FailurePolicy.FAIL_OPEN) {
+                    throw e;
+                }
+                // FAIL_OPEN: 저장 실패를 감수하고 result 반환
+            }
             return result;
         } catch (Throwable ex) {
             // 실패한 요청은 캐싱하지 않고 재시도를 허용한다
-            storage.release(redisKey);
+            try {
+                storage.release(redisKey);
+            } catch (IdempotencyStorageException ignored) {
+                // 비즈니스 예외가 우선이므로 release 실패는 정책 무관하게 무시한다
+                // 키는 in-progress-ttl-seconds 후 자동 만료된다
+            }
             throw ex;
         }
     }
