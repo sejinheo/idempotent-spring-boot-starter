@@ -63,6 +63,21 @@ Idempotency-Key: 3f29b6b2-1c2a-4e2e-9a2e-1234567890ab
 | Redis 장애 (`FAIL_CLOSED`) | 5xx 오류 |
 | Redis 장애 (`FAIL_OPEN`) | 정상 실행 (중복 실행 가능성 감수) |
 
+## 예외 발생 시 재시도 허용
+
+기본적으로 예외가 발생하면 키를 유지합니다. 외부 시스템 호출이 이미 성공한 상태에서 후처리가 실패한 경우 키를 삭제하면 재시도 시 이중 실행이 발생할 수 있기 때문입니다.
+
+재시도해도 안전한 예외(잔액 부족, 입력값 검증 실패 등)는 `IdempotencyRetryable`을 구현하면 예외 발생 시 키를 삭제해서 재시도를 허용합니다.
+
+```java
+// 재시도 허용 — 외부 시스템 호출 전에 실패하므로 안전
+public class InsufficientBalanceException extends RuntimeException
+        implements IdempotencyRetryable { ... }
+
+// 재시도 불허 — 결제가 이미 나갔을 수 있으므로 키 유지
+public class PaymentPostProcessingException extends RuntimeException { ... }
+```
+
 ## 지원 범위
 
 - HTTP 요청 전용 (Kafka 등 비-HTTP 컨텍스트 미지원)

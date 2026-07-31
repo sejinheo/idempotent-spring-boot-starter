@@ -36,7 +36,10 @@ import java.util.HexFormat;
  *        - bodyHash가 다르면 키 재사용 충돌(422)
  *        - IN_PROGRESS면 동시 요청이므로 REJECT(409)
  *        - COMPLETED면 저장된 응답을 그대로 재생
- * 4. 메서드 실행 중 예외가 나면 키를 삭제해서 재시도를 허용한다.
+ * 4. 메서드 실행 중 예외가 나면:
+ *    - IdempotencyRetryable 구현 예외: 키를 삭제해서 재시도를 허용한다.
+ *    - 그 외 예외: 키를 유지한다. 외부 시스템이 이미 성공한 상태에서 후처리가
+ *      실패한 경우 키를 지우면 재시도 시 이중 실행이 발생할 수 있다.
  *
  * Redis 장애 정책 (on-storage-failure):
  * - FAIL_CLOSED(기본): 저장소 예외를 그대로 던져서 요청을 실패 처리한다.
@@ -133,12 +136,16 @@ public class HttpIdempotentAspect {
             }
             return result;
         } catch (Throwable ex) {
-            // 실패한 요청은 캐싱하지 않고 재시도를 허용한다
-            try {
-                storage.release(redisKey);
-            } catch (IdempotencyStorageException ignored) {
-                // 비즈니스 예외가 우선이므로 release 실패는 정책 무관하게 무시한다
-                // 키는 in-progress-ttl-seconds 후 자동 만료된다
+            // IdempotencyRetryable을 구현한 예외만 키를 삭제해서 재시도를 허용한다.
+            // 그 외 예외는 키를 유지한다 — 외부 시스템이 이미 성공한 상태에서
+            // 후처리가 실패한 경우 키를 지우면 재시도 시 이중 실행이 발생할 수 있다.
+            if (ex instanceof IdempotencyRetryable) {
+                try {
+                    storage.release(redisKey);
+                } catch (IdempotencyStorageException ignored) {
+                    // 비즈니스 예외가 우선이므로 release 실패는 정책 무관하게 무시한다
+                    // 키는 in-progress-ttl-seconds 후 자동 만료된다
+                }
             }
             throw ex;
         }
