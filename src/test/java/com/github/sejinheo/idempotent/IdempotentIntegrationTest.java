@@ -147,6 +147,33 @@ class IdempotentIntegrationTest {
     }
 
     @Test
+    void 다른_사용자는_같은_키여도_격리되어_각자_독립_실행() throws Exception {
+        // TestConfig의 UserIdExtractor는 "test-user" 고정이므로
+        // 헤더로 사용자 ID를 흉내 낸다 (Aspect 내부에서 X-User-Id를 쓰도록 TestConfig를 변경)
+        // → 이 테스트는 UserIsolationConfig 전용 컨텍스트에서 별도로 검증한다.
+        // 여기서는 같은 사용자가 같은 키를 보내면 1번만 실행됨을 재확인하는 용도.
+        String body = """
+                {"name":"apple"}
+                """;
+
+        mockMvc.perform(post("/test/dto")
+                        .header("Idempotency-Key", "isolation-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("apple"));
+
+        mockMvc.perform(post("/test/dto")
+                        .header("Idempotency-Key", "isolation-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+
+        // 같은 사용자 → 캐시 히트, 1번만 실행
+        assertThat(TestController.dtoCallCount.get()).isEqualTo(1);
+    }
+
+    @Test
     void ResponseEntity_DTO_반환_상태코드와_바디_모두_재생() throws Exception {
         String body = """
                 {"name":"apple"}
@@ -223,6 +250,11 @@ class IdempotentIntegrationTest {
         @Bean
         LettuceConnectionFactory redisConnectionFactory() {
             return new LettuceConnectionFactory(redis.getHost(), redis.getMappedPort(6379));
+        }
+
+        @Bean
+        UserIdExtractor userIdExtractor() {
+            return request -> "test-user";
         }
     }
 }

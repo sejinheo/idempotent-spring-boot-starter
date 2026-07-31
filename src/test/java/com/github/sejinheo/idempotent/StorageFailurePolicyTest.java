@@ -162,6 +162,11 @@ class StorageFailurePolicyTest {
         }
 
         @Bean
+        UserIdExtractor userIdExtractor() {
+            return request -> "test-user";
+        }
+
+        @Bean
         @Primary
         IdempotencyStorage brokenStorage() {
             return new IdempotencyStorage() {
@@ -195,6 +200,11 @@ class StorageFailurePolicyTest {
         @Bean
         PolicyTestController policyTestController() {
             return new PolicyTestController();
+        }
+
+        @Bean
+        UserIdExtractor userIdExtractor() {
+            return request -> "test-user";
         }
 
         @Bean
@@ -232,6 +242,11 @@ class StorageFailurePolicyTest {
         @Bean
         PolicyTestController policyTestController() {
             return new PolicyTestController();
+        }
+
+        @Bean
+        UserIdExtractor userIdExtractor() {
+            return request -> "test-user";
         }
 
         @Bean

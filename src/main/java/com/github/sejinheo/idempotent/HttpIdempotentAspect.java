@@ -54,13 +54,16 @@ public class HttpIdempotentAspect {
     private final IdempotencyStorage storage;
     private final IdempotencyProperties properties;
     private final ObjectMapper objectMapper;
+    private final UserIdExtractor userIdExtractor;
 
     public HttpIdempotentAspect(IdempotencyStorage storage,
                                  IdempotencyProperties properties,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 UserIdExtractor userIdExtractor) {
         this.storage = storage;
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.userIdExtractor = userIdExtractor;
     }
 
     @Around("@annotation(idempotent)")
@@ -71,7 +74,8 @@ public class HttpIdempotentAspect {
             throw new IdempotencyKeyMissingException(idempotent.headerName());
         }
 
-        String redisKey = properties.getKeyPrefix() + headerKey;
+        String userId = userIdExtractor.extract(request);
+        String redisKey = properties.getKeyPrefix() + userId + ":" + headerKey;
         Duration inProgressTtl = Duration.ofSeconds(properties.getInProgressTtlSeconds());
         Duration completedTtl = Duration.ofHours(properties.getTtlHours());
 
