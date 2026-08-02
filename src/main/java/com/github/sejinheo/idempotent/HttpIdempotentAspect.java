@@ -10,6 +10,8 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -50,8 +52,13 @@ import java.util.HexFormat;
  * ResponseEntity 지원: 제네릭 타입 파라미터를 런타임에 추출해서 역직렬화하므로
  * ResponseEntity&lt;Void&gt;, ResponseEntity&lt;SomeDto&gt;, ResponseEntity&lt;List&lt;SomeDto&gt;&gt; 등
  * 모든 ResponseEntity 반환 타입과 순수 DTO 반환 타입을 모두 지원한다.
+ *
+ * @Order(LOWEST_PRECEDENCE - 1): @Transactional의 기본 order(LOWEST_PRECEDENCE)보다
+ * 바깥에서 실행되도록 순서를 명시한다. 트랜잭션 커밋 후 COMPLETED를 저장하기 위함이다.
+ * 순서가 뒤집히면 트랜잭션 롤백 시 COMPLETED가 이미 저장된 상태가 되어 재시도가 막힌다.
  */
 @Aspect
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 public class HttpIdempotentAspect {
 
     private final IdempotencyStorage storage;
