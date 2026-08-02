@@ -1,6 +1,6 @@
 # idempotent-spring-boot-starter
 
-Redis 기반 HTTP 멱등성 처리 Spring Boot Starter 라이브러리입니다.
+HTTP 멱등성 처리 Spring Boot Starter 라이브러리입니다. Redis(기본) 또는 JDBC(DB) 저장소를 선택할 수 있습니다.
 
 ## 설치
 
@@ -14,6 +14,59 @@ dependencies {
 }
 ```
 
+## 저장소 선택
+
+### Redis (기본)
+
+분산 환경에 적합합니다. 별도 설정 없이 Redis 의존성만 있으면 자동으로 활성화됩니다.
+
+```yaml
+idempotency:
+  storage: redis  # 기본값, 생략 가능
+
+spring:
+  data:
+    redis:
+      host: localhost
+      port: 6379
+```
+
+### JDBC (DB)
+
+결제처럼 절대 중복 실행이 안 되는 경우에 권장합니다. 비즈니스 트랜잭션과 같은 DB 트랜잭션으로 묶여 강한 멱등성을 보장합니다. 별도 DB를 두는 게 아니라 사용 중인 DB에 테이블 하나가 추가됩니다.
+
+```yaml
+idempotency:
+  storage: jdbc
+```
+
+사용 전 `schema-mysql.sql` 또는 `schema-postgresql.sql`로 테이블을 생성해야 합니다.
+
+```sql
+-- schema-mysql.sql
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+    idempotency_key VARCHAR(255) NOT NULL,
+    status          VARCHAR(20)  NOT NULL,
+    body_hash       VARCHAR(64)  NOT NULL,
+    http_status     INT,
+    body_json       TEXT,
+    expires_at      DATETIME     NOT NULL,
+    PRIMARY KEY (idempotency_key)
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
+```
+
+## UserIdExtractor 등록 (필수)
+
+사용자 간 Idempotency-Key 격리를 위해 반드시 빈으로 등록해야 합니다. 없으면 서버가 기동되지 않습니다.
+
+```java
+@Bean
+public UserIdExtractor userIdExtractor() {
+    // 예: JWT에서 사용자 ID 추출
+    return request -> jwtUtil.extractUserId(request.getHeader("Authorization"));
+}
+```
+
 ## 설정 (application.yml)
 
 ```yaml
@@ -22,12 +75,7 @@ idempotency:
   ttl-hours: 24                              # COMPLETED 응답 보관 TTL (기본: 24시간)
   in-progress-ttl-seconds: 30               # 처리 중 상태 TTL (기본: 30초, API 처리 시간에 맞게 조정)
   on-storage-failure: FAIL_CLOSED           # Redis 장애 시 동작 정책 (기본: FAIL_CLOSED)
-
-spring:
-  data:
-    redis:
-      host: localhost
-      port: 6379
+  storage: redis                             # redis(기본) 또는 jdbc
 ```
 
 ## 사용법

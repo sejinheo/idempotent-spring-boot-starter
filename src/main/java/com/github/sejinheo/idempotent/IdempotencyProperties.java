@@ -12,6 +12,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *   ttl-hours: 24
  *   in-progress-ttl-seconds: 30
  *   on-storage-failure: FAIL_CLOSED
+ *   storage: redis   # redis(기본) 또는 jdbc
  */
 @ConfigurationProperties(prefix = "idempotency")
 public class IdempotencyProperties {
@@ -43,15 +44,25 @@ public class IdempotencyProperties {
      */
     private final FailurePolicy onStorageFailure;
 
+    /**
+     * 멱등성 저장소 구현체 선택.
+     * REDIS(기본): Redis SET NX 기반. 분산 환경에 적합.
+     * JDBC: DB 기반. 비즈니스 트랜잭션과 같은 트랜잭션으로 묶어 강한 멱등성 보장.
+     *       결제처럼 절대 중복 실행이 안 되는 경우에 권장.
+     */
+    private final StorageType storage;
+
     public IdempotencyProperties(
             @DefaultValue("idempotency:") String keyPrefix,
             @DefaultValue("24") long ttlHours,
             @DefaultValue("30") long inProgressTtlSeconds,
-            @DefaultValue("FAIL_CLOSED") FailurePolicy onStorageFailure) {
+            @DefaultValue("FAIL_CLOSED") FailurePolicy onStorageFailure,
+            @DefaultValue("REDIS") StorageType storage) {
         this.keyPrefix = keyPrefix;
         this.ttlHours = ttlHours;
         this.inProgressTtlSeconds = inProgressTtlSeconds;
         this.onStorageFailure = onStorageFailure;
+        this.storage = storage;
     }
 
     public String getKeyPrefix() {
@@ -68,5 +79,9 @@ public class IdempotencyProperties {
 
     public FailurePolicy getOnStorageFailure() {
         return onStorageFailure;
+    }
+
+    public StorageType getStorage() {
+        return storage;
     }
 }

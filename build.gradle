@@ -28,6 +28,7 @@ dependencies {
     // 여기서 implementation으로 끌고 가면 버전 충돌이 날 수 있다.
     compileOnly "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
     compileOnly "org.springframework.boot:spring-boot-starter-data-redis:${springBootVersion}"
+    compileOnly "org.springframework.boot:spring-boot-starter-jdbc:${springBootVersion}"
     compileOnly "org.springframework.boot:spring-boot-autoconfigure:${springBootVersion}"
     compileOnly "org.springframework.boot:spring-boot-starter-aop:${springBootVersion}"
     compileOnly 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
@@ -37,11 +38,13 @@ dependencies {
     // 테스트에는 실제 구현체가 다 필요하다
     testImplementation "org.springframework.boot:spring-boot-starter-web:${springBootVersion}"
     testImplementation "org.springframework.boot:spring-boot-starter-data-redis:${springBootVersion}"
+    testImplementation "org.springframework.boot:spring-boot-starter-jdbc:${springBootVersion}"
     testImplementation "org.springframework.boot:spring-boot-starter-aop:${springBootVersion}"
     testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
     testImplementation 'org.testcontainers:junit-jupiter:1.19.8'
     testImplementation 'org.testcontainers:testcontainers:1.19.8'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    testRuntimeOnly 'com.h2database:h2:2.2.224'
 }
 
 tasks.withType(JavaCompile).configureEach {
