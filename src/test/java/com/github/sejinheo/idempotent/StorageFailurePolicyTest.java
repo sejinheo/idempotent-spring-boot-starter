@@ -63,7 +63,7 @@ class StorageFailurePolicyTest {
 
     @SpringBootTest(classes = FailClosedConfig.class)
     @AutoConfigureMockMvc
-    @TestPropertySource(properties = "idempotency.on-storage-failure=FAIL_CLOSED")
+    @TestPropertySource(properties = "idempotency.on-claim-failure=FAIL_CLOSED")
     static class FailClosedTest {
 
         @Autowired
@@ -94,7 +94,7 @@ class StorageFailurePolicyTest {
 
     @SpringBootTest(classes = FailOpenConfig.class)
     @AutoConfigureMockMvc
-    @TestPropertySource(properties = "idempotency.on-storage-failure=FAIL_OPEN")
+    @TestPropertySource(properties = "idempotency.on-claim-failure=FAIL_OPEN")
     static class FailOpenTryClaimTest {
 
         @Autowired
@@ -121,13 +121,13 @@ class StorageFailurePolicyTest {
     }
 
     // -----------------------------------------------------------------------
-    // FAIL_OPEN — complete 예외 시에도 result가 반환되어야 한다
+    // complete 실패 시 설정과 무관하게 항상 result가 반환되어야 한다
     // -----------------------------------------------------------------------
 
-    @SpringBootTest(classes = FailOpenCompleteFailConfig.class)
+    @SpringBootTest(classes = CompleteFailConfig.class)
     @AutoConfigureMockMvc
-    @TestPropertySource(properties = "idempotency.on-storage-failure=FAIL_OPEN")
-    static class FailOpenCompleteFailTest {
+    @TestPropertySource(properties = "idempotency.on-claim-failure=FAIL_CLOSED")
+    static class CompleteFailTest {
 
         @Autowired
         MockMvc mockMvc;
@@ -138,7 +138,7 @@ class StorageFailurePolicyTest {
         }
 
         @Test
-        void FAIL_OPEN에서_complete_실패해도_result를_반환한다() throws Exception {
+        void complete_실패시_FAIL_CLOSED여도_result를_반환한다() throws Exception {
             mockMvc.perform(post("/policy-test/dto")
                             .header("Idempotency-Key", "key-complete-fail")
                             .contentType(MediaType.APPLICATION_JSON)
@@ -241,7 +241,7 @@ class StorageFailurePolicyTest {
     // complete()만 예외, tryClaim()은 성공하는 mock storage
     @Configuration
     @EnableAutoConfiguration
-    static class FailOpenCompleteFailConfig {
+    static class CompleteFailConfig {
 
         @Bean
         PolicyTestController policyTestController() {

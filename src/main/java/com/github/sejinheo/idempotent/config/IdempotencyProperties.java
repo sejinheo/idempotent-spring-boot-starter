@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *   key-prefix: "order-service:idempotency:"
  *   ttl-hours: 24
  *   in-progress-ttl-seconds: 30
- *   on-storage-failure: FAIL_CLOSED
+ *   on-claim-failure: FAIL_CLOSED
  *   storage: redis   # redis(기본) 또는 jdbc
  */
 @ConfigurationProperties(prefix = "idempotency")
@@ -38,11 +38,13 @@ public class IdempotencyProperties {
     private final long inProgressTtlSeconds;
 
     /**
-     * Redis 등 저장소 장애 시 동작 정책.
+     * 저장소 선점(tryClaim) 실패 시 동작 정책.
      * FAIL_CLOSED(기본): 예외를 그대로 던져서 요청을 실패 처리한다.
      * FAIL_OPEN: 예외를 무시하고 요청을 통과시킨다. 중복 실행 가능성을 감수한다.
+     *
+     * 결과 저장(complete) 실패는 이 설정과 무관하게 항상 결과를 반환하고 WARN 로그를 남긴다.
      */
-    private final FailurePolicy onStorageFailure;
+    private final ClaimFailurePolicy onClaimFailure;
 
     /**
      * 멱등성 저장소 구현체 선택.
@@ -56,12 +58,12 @@ public class IdempotencyProperties {
             @DefaultValue("idempotency:") String keyPrefix,
             @DefaultValue("24") long ttlHours,
             @DefaultValue("30") long inProgressTtlSeconds,
-            @DefaultValue("FAIL_CLOSED") FailurePolicy onStorageFailure,
+            @DefaultValue("FAIL_CLOSED") ClaimFailurePolicy onClaimFailure,
             @DefaultValue("REDIS") StorageType storage) {
         this.keyPrefix = keyPrefix;
         this.ttlHours = ttlHours;
         this.inProgressTtlSeconds = inProgressTtlSeconds;
-        this.onStorageFailure = onStorageFailure;
+        this.onClaimFailure = onClaimFailure;
         this.storage = storage;
     }
 
@@ -77,8 +79,8 @@ public class IdempotencyProperties {
         return inProgressTtlSeconds;
     }
 
-    public FailurePolicy getOnStorageFailure() {
-        return onStorageFailure;
+    public ClaimFailurePolicy getOnClaimFailure() {
+        return onClaimFailure;
     }
 
     public StorageType getStorage() {

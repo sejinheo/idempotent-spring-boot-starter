@@ -2,7 +2,7 @@ package com.github.sejinheo.idempotent.aspect;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.sejinheo.idempotent.annotation.Idempotent;
-import com.github.sejinheo.idempotent.config.FailurePolicy;
+import com.github.sejinheo.idempotent.config.ClaimFailurePolicy;
 import com.github.sejinheo.idempotent.config.IdempotencyProperties;
 import com.github.sejinheo.idempotent.exception.IdempotencyConflictException;
 import com.github.sejinheo.idempotent.exception.IdempotencyKeyMissingException;
@@ -13,6 +13,8 @@ import com.github.sejinheo.idempotent.spi.UserIdExtractor;
 import com.github.sejinheo.idempotent.storage.IdempotencyResult;
 import com.github.sejinheo.idempotent.storage.IdempotencyStorage;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -50,11 +52,14 @@ import java.util.HexFormat;
  *    - 그 외 예외: 키를 유지한다. 외부 시스템이 이미 성공한 상태에서 후처리가
  *      실패한 경우 키를 지우면 재시도 시 이중 실행이 발생할 수 있다.
  *
- * Redis 장애 정책 (on-storage-failure):
- * - FAIL_CLOSED(기본): 저장소 예외를 그대로 던져서 요청을 실패 처리한다.
- * - FAIL_OPEN: 저장소 예외를 무시하고 요청을 통과시킨다. 중복 실행 가능성을 감수한다.
- *   tryClaim 실패 시 중복 체크 없이 proceed(), complete 실패 시 result를 그대로 반환.
- *   release 실패는 정책에 무관하게 무시한다 (비즈니스 예외가 우선, TTL로 자동 만료).
+ * 저장소 장애 정책:
+ * - tryClaim 실패: on-claim-failure 설정에 따라 동작한다.
+ *   FAIL_CLOSED(기본): 예외를 그대로 던져서 요청을 실패 처리한다.
+ *   FAIL_OPEN: 중복 체크 없이 proceed()한다. 중복 실행 가능성을 감수한다.
+ * - complete 실패: 설정과 무관하게 항상 result를 반환하고 WARN 로그를 남긴다.
+ *   비즈니스 로직이 이미 성공한 상태에서 500을 반환하면 클라이언트가 재시도하고
+ *   기록이 없으니 통과되어 중복 실행이 발생한다.
+ * - release 실패: 정책에 무관하게 무시한다 (비즈니스 예외가 우선, TTL로 자동 만료).
  *
  * ResponseEntity 지원: 제네릭 타입 파라미터를 런타임에 추출해서 역직렬화하므로
  * ResponseEntity&lt;Void&gt;, ResponseEntity&lt;SomeDto&gt;, ResponseEntity&lt;List&lt;SomeDto&gt;&gt; 등
@@ -67,6 +72,8 @@ import java.util.HexFormat;
 @Aspect
 @Order(Ordered.LOWEST_PRECEDENCE - 1)
 public class HttpIdempotentAspect {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpIdempotentAspect.class);
 
     private final IdempotencyStorage storage;
     private final IdempotencyProperties properties;
@@ -106,7 +113,7 @@ public class HttpIdempotentAspect {
         try {
             claimed = storage.tryClaim(redisKey, IdempotencyResult.inProgress(bodyHash), inProgressTtl);
         } catch (IdempotencyStorageException e) {
-            if (properties.getOnStorageFailure() == FailurePolicy.FAIL_OPEN) {
+            if (properties.getOnClaimFailure() == ClaimFailurePolicy.FAIL_OPEN) {
                 return joinPoint.proceed();
             }
             throw e;
@@ -146,10 +153,9 @@ public class HttpIdempotentAspect {
             try {
                 storage.complete(redisKey, completed, completedTtl);
             } catch (IdempotencyStorageException e) {
-                if (properties.getOnStorageFailure() != FailurePolicy.FAIL_OPEN) {
-                    throw e;
-                }
-                // FAIL_OPEN: 저장 실패를 감수하고 result 반환
+                // 비즈니스 로직은 이미 성공했으므로 설정과 무관하게 항상 result를 반환한다.
+                // 500을 반환하면 클라이언트가 재시도하고 기록이 없으니 통과되어 중복 실행이 발생한다.
+                log.warn("멱등성 결과 저장 실패 — 비즈니스 결과는 반환되지만 재시도 시 중복 실행될 수 있습니다. key={}", redisKey, e);
             }
             return result;
         } catch (Throwable ex) {
