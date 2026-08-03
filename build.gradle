@@ -43,8 +43,11 @@ dependencies {
     testImplementation "org.springframework.boot:spring-boot-starter-test:${springBootVersion}"
     testImplementation 'org.testcontainers:junit-jupiter:1.19.8'
     testImplementation 'org.testcontainers:testcontainers:1.19.8'
+    testImplementation 'org.testcontainers:mysql:1.19.8'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers:3.3.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testRuntimeOnly 'com.h2database:h2:2.2.224'
+    testRuntimeOnly 'com.mysql:mysql-connector-j:8.3.0'
 }
 
 tasks.withType(JavaCompile).configureEach {

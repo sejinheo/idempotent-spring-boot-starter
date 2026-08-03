@@ -1,6 +1,5 @@
 package com.github.sejinheo.idempotent;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.sejinheo.idempotent.annotation.Idempotent;
 import com.github.sejinheo.idempotent.spi.UserIdExtractor;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -20,6 +20,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -30,18 +34,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * JdbcIdempotencyStorage 통합 테스트.
- * H2(MySQL 호환 모드)로 Docker 없이 실행한다.
+ * 실제 MySQL Testcontainers로 실행하여 프로덕션 환경과 동일한 동작을 보장한다.
  */
+@Testcontainers
 @SpringBootTest(classes = JdbcIdempotencyStorageTest.JdbcTestConfig.class)
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
         "idempotency.storage=jdbc",
-        "spring.datasource.url=jdbc:h2:mem:testdb;MODE=MySQL;DB_CLOSE_DELAY=-1",
-        "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.sql.init.mode=always",
         "spring.sql.init.schema-locations=classpath:schema-mysql.sql"
 })
 class JdbcIdempotencyStorageTest {
+
+    @Container
+    @ServiceConnection
+    static MySQLContainer<?> mysql = new MySQLContainer<>(DockerImageName.parse("mysql:8.0"))
+            .withUsername("test")
+            .withPassword("test")
+            .withDatabaseName("idempotent_test");
 
     @Autowired
     MockMvc mockMvc;
