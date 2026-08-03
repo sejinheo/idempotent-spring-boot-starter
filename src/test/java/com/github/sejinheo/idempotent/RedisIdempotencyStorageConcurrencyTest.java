@@ -47,7 +47,7 @@ class RedisIdempotencyStorageConcurrencyTest {
     @Test
     void 동시에_같은_키로_요청하면_하나만_선점에_성공한다() throws InterruptedException {
         String key = "idempotency:test-key";
-        int threadCount = 20;
+        int threadCount = 100;
         ExecutorService executor = Executors.newFixedThreadPool(threadCount);
         CountDownLatch readyLatch = new CountDownLatch(threadCount);
         CountDownLatch startLatch = new CountDownLatch(1);
