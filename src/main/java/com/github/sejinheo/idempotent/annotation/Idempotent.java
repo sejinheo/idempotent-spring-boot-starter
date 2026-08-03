@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

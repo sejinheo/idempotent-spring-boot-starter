@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;

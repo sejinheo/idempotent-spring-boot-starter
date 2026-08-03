@@ -1,1 +1,1 @@
-com.github.sejinheo.idempotent.IdempotencyAutoConfiguration
+com.github.sejinheo.idempotent.config.IdempotencyAutoConfiguration

@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.storage;
 
 import java.time.Duration;
 import java.util.Optional;

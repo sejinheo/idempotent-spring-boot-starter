@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.exception;
 
 /**
  * 이 인터페이스를 구현한 예외가 발생하면 Idempotency 키를 삭제하여 재시도를 허용한다.

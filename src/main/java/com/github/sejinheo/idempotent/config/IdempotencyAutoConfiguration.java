@@ -1,6 +1,11 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.sejinheo.idempotent.aspect.HttpIdempotentAspect;
+import com.github.sejinheo.idempotent.spi.UserIdExtractor;
+import com.github.sejinheo.idempotent.storage.IdempotencyStorage;
+import com.github.sejinheo.idempotent.storage.JdbcIdempotencyStorage;
+import com.github.sejinheo.idempotent.storage.RedisIdempotencyStorage;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;

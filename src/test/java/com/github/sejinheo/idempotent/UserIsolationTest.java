@@ -1,5 +1,7 @@
 package com.github.sejinheo.idempotent;
 
+import com.github.sejinheo.idempotent.annotation.Idempotent;
+import com.github.sejinheo.idempotent.spi.UserIdExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

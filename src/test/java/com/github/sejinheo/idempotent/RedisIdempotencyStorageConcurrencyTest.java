@@ -1,6 +1,9 @@
 package com.github.sejinheo.idempotent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.sejinheo.idempotent.storage.IdempotencyResult;
+import com.github.sejinheo.idempotent.storage.IdempotencyStorage;
+import com.github.sejinheo.idempotent.storage.RedisIdempotencyStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;

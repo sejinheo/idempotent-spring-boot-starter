@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.config;
 
 /**
  * Redis 등 저장소 장애 시 동작 정책.

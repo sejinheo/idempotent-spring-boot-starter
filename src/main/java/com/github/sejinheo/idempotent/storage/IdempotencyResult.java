@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.storage;
 
 /**
  * Redis 키 하나에 저장되는 멱등성 처리 상태.

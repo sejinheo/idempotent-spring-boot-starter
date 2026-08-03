@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.spi;
 
 import jakarta.servlet.http.HttpServletRequest;
 

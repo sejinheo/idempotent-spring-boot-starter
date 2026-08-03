@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.sejinheo.idempotent.exception.IdempotencyStorageException;

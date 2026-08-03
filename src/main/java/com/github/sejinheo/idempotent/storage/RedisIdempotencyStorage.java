@@ -1,7 +1,7 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.storage;
 
-import com.github.sejinheo.idempotent.exception.IdempotencyStorageException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.sejinheo.idempotent.exception.IdempotencyStorageException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;

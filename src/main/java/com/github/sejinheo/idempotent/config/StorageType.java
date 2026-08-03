@@ -1,4 +1,4 @@
-package com.github.sejinheo.idempotent;
+package com.github.sejinheo.idempotent.config;
 
 /**
  * 멱등성 저장소 구현체 선택.
