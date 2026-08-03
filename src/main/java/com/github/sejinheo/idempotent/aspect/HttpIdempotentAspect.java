@@ -134,8 +134,19 @@ public class HttpIdempotentAspect {
                 throw new IdempotencyConflictException("이미 처리 중인 요청입니다. 잠시 후 다시 시도해주세요.");
             }
 
-            // COMPLETED -> 저장된 응답을 그대로 재생
-            return replay(existing, joinPoint);
+            // COMPLETED지만 저장 형식 버전이 다르면 캐시 미스로 처리
+            if (existing.getSchemaVersion() != IdempotencyResult.CURRENT_SCHEMA_VERSION) {
+                log.warn("저장된 응답의 schemaVersion({})이 현재 버전({})과 달라 재실행합니다. key={}",
+                        existing.getSchemaVersion(), IdempotencyResult.CURRENT_SCHEMA_VERSION, redisKey);
+                storage.release(redisKey);
+                claimed = storage.tryClaim(redisKey, IdempotencyResult.inProgress(bodyHash), inProgressTtl);
+                if (!claimed) {
+                    throw new IdempotencyConflictException("이미 처리 중인 요청입니다. 잠시 후 다시 시도해주세요.");
+                }
+            } else {
+                // COMPLETED -> 저장된 응답을 그대로 재생
+                return replay(existing, joinPoint);
+            }
         }
 
         try {

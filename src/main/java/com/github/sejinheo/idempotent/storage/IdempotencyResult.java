@@ -10,13 +10,22 @@ package com.github.sejinheo.idempotent.storage;
  * IN_PROGRESS인 동안 같은 키로 요청이 오면 REJECT(409),
  * COMPLETED가 되면 저장된 응답을 그대로 재생(replay)한다.
  * 두 경우 모두 bodyHash가 기존 요청과 다르면 키 재사용 충돌(422)로 처리한다.
+ *
+ * schemaVersion: 저장 형식의 버전. 배포로 DTO 필드가 바뀐 경우 저장된 응답을
+ * 역직렬화할 때 조용히 깨지는 문제를 방지한다. COMPLETED 재생 시 현재 버전과
+ * 다르면 캐시 미스로 처리해서 키를 삭제하고 재실행한다.
+ * 저장 형식이 바뀔 때마다 CURRENT_SCHEMA_VERSION을 올린다.
  */
 public class IdempotencyResult {
+
+    public static final int CURRENT_SCHEMA_VERSION = 1;
 
     public enum Status {
         IN_PROGRESS,
         COMPLETED
     }
+
+    private int schemaVersion = CURRENT_SCHEMA_VERSION;
 
     private Status status;
 
@@ -34,6 +43,14 @@ public class IdempotencyResult {
     private String bodyJson;
 
     public IdempotencyResult() {
+    }
+
+    public int getSchemaVersion() {
+        return schemaVersion;
+    }
+
+    public void setSchemaVersion(int schemaVersion) {
+        this.schemaVersion = schemaVersion;
     }
 
     public static IdempotencyResult inProgress(String bodyHash) {

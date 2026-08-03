@@ -37,7 +37,7 @@ public class JdbcIdempotencyStorage implements IdempotencyStorage {
     public Optional<IdempotencyResult> find(String key) {
         try {
             String sql = """
-                    SELECT status, body_hash, http_status, body_json
+                    SELECT status, body_hash, http_status, body_json, schema_version
                     FROM idempotency_keys
                     WHERE idempotency_key = ? AND expires_at > NOW()
                     """;
@@ -55,14 +55,15 @@ public class JdbcIdempotencyStorage implements IdempotencyStorage {
             // affected rows == 1이면 선점 성공, 0이면 이미 존재
             String sql = """
                     INSERT IGNORE INTO idempotency_keys
-                        (idempotency_key, status, body_hash, http_status, body_json, expires_at)
-                    VALUES (?, ?, ?, NULL, NULL, ?)
+                        (idempotency_key, status, body_hash, http_status, body_json, schema_version, expires_at)
+                    VALUES (?, ?, ?, NULL, NULL, ?, ?)
                     """;
             LocalDateTime expiresAt = LocalDateTime.now().plus(ttl);
             int affected = jdbcTemplate.update(sql,
                     key,
                     inProgress.getStatus().name(),
                     inProgress.getBodyHash(),
+                    inProgress.getSchemaVersion(),
                     Timestamp.valueOf(expiresAt));
             return affected == 1;
         } catch (DataAccessException e) {
@@ -75,7 +76,7 @@ public class JdbcIdempotencyStorage implements IdempotencyStorage {
         try {
             String sql = """
                     UPDATE idempotency_keys
-                    SET status = ?, http_status = ?, body_json = ?, expires_at = ?
+                    SET status = ?, http_status = ?, body_json = ?, schema_version = ?, expires_at = ?
                     WHERE idempotency_key = ?
                     """;
             LocalDateTime expiresAt = LocalDateTime.now().plus(ttl);
@@ -83,6 +84,7 @@ public class JdbcIdempotencyStorage implements IdempotencyStorage {
                     completed.getStatus().name(),
                     completed.getHttpStatus(),
                     completed.getBodyJson(),
+                    completed.getSchemaVersion(),
                     Timestamp.valueOf(expiresAt),
                     key);
         } catch (DataAccessException e) {
@@ -105,6 +107,7 @@ public class JdbcIdempotencyStorage implements IdempotencyStorage {
         result.setBodyHash(rs.getString("body_hash"));
         result.setHttpStatus(rs.getObject("http_status", Integer.class));
         result.setBodyJson(rs.getString("body_json"));
+        result.setSchemaVersion(rs.getInt("schema_version"));
         return result;
     }
 }
