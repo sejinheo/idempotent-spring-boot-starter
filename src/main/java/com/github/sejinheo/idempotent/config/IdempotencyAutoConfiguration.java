@@ -25,8 +25,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *         결제처럼 절대 중복 실행이 안 되는 경우에 권장.
  *         사용 전 schema-mysql.sql 또는 schema-postgresql.sql로 테이블을 생성해야 한다.
  *
- * ObjectMapper: 사용자 프로젝트에 ObjectMapper 빈이 있으면 그것을 재사용하고,
+ * ObjectMapper: Redis 저장소와 AOP Aspect에서 응답 직렬화에 사용한다.
+ * 사용자 프로젝트에 ObjectMapper 빈이 있으면 그것을 재사용하고,
  * 없으면 라이브러리 내부에서 기본 ObjectMapper를 생성해서 사용한다.
+ * JDBC 저장소는 응답을 TEXT로 직접 저장하므로 ObjectMapper를 사용하지 않는다.
  *
  * UserIdExtractor: 반드시 빈으로 등록해야 한다. 없으면 서버가 기동되지 않는다.
  * 사용자 간 Idempotency-Key 격리는 UserIdExtractor가 반환하는 ID에 의존하므로,
@@ -54,9 +56,8 @@ public class IdempotencyAutoConfiguration {
     @ConditionalOnClass(JdbcTemplate.class)
     @ConditionalOnMissingBean(IdempotencyStorage.class)
     @ConditionalOnProperty(name = "idempotency.storage", havingValue = "jdbc")
-    public IdempotencyStorage jdbcIdempotencyStorage(JdbcTemplate jdbcTemplate,
-                                                      ObjectProvider<ObjectMapper> objectMapperProvider) {
-        return new JdbcIdempotencyStorage(jdbcTemplate, resolveObjectMapper(objectMapperProvider));
+    public IdempotencyStorage jdbcIdempotencyStorage(JdbcTemplate jdbcTemplate) {
+        return new JdbcIdempotencyStorage(jdbcTemplate);
     }
 
     @Bean

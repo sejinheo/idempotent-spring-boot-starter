@@ -1,6 +1,5 @@
 package com.github.sejinheo.idempotent;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.sejinheo.idempotent.annotation.Idempotent;
 import com.github.sejinheo.idempotent.exception.IdempotencyStorageException;
 import com.github.sejinheo.idempotent.spi.UserIdExtractor;

@@ -1,6 +1,5 @@
 package com.github.sejinheo.idempotent.storage;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.sejinheo.idempotent.exception.IdempotencyStorageException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -26,11 +25,9 @@ import java.util.Optional;
 public class JdbcIdempotencyStorage implements IdempotencyStorage {
 
     private final JdbcTemplate jdbcTemplate;
-    private final ObjectMapper objectMapper;
 
-    public JdbcIdempotencyStorage(JdbcTemplate jdbcTemplate, ObjectMapper objectMapper) {
+    public JdbcIdempotencyStorage(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.objectMapper = objectMapper;
     }
 
     @Override
