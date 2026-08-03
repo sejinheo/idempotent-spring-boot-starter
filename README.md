@@ -74,7 +74,7 @@ idempotency:
   key-prefix: "order-service:idempotency:"  # 서비스별로 다르게 설정 (Redis 키 충돌 방지)
   ttl-hours: 24                              # COMPLETED 응답 보관 TTL (기본: 24시간)
   in-progress-ttl-seconds: 30               # 처리 중 상태 TTL (기본: 30초, API 처리 시간에 맞게 조정)
-  on-storage-failure: FAIL_CLOSED           # Redis 장애 시 동작 정책 (기본: FAIL_CLOSED)
+  on-claim-failure: FAIL_CLOSED             # 선점 실패 시 동작 정책 (기본: FAIL_CLOSED)
   storage: redis                             # redis(기본) 또는 jdbc
 ```
 
@@ -126,6 +126,94 @@ public class InsufficientBalanceException extends RuntimeException
 public class PaymentPostProcessingException extends RuntimeException { ... }
 ```
 
+## 동작 흐름
+
+### Redis 저장소
+
+```mermaid
+flowchart TD
+    A[요청 수신] --> B{Idempotency-Key\n헤더 확인}
+    B -->|없음| C[400 Bad Request]
+    B -->|있음| D[Redis tryClaim\nSET NX]
+
+    D -->|Redis 장애| E{on-claim-failure}
+    E -->|FAIL_CLOSED| F[503 반환]
+    E -->|FAIL_OPEN| G[WARN 로그\n중복 체크 없이 실행]
+    G --> N
+
+    D -->|선점 성공\nIN_PROGRESS 저장| N[비즈니스 로직 실행]
+    D -->|선점 실패\n키 이미 존재| H[Redis find]
+
+    H --> I{기존 상태}
+    I -->|bodyHash 불일치| J[422 Unprocessable Entity]
+    I -->|IN_PROGRESS| K[409 Conflict]
+    I -->|COMPLETED\nschemaVersion 불일치| L[키 삭제 후 재실행]
+    I -->|COMPLETED\nschemaVersion 일치| M[캐시된 응답 재생]
+    L --> N
+
+    N -->|성공| O[Redis complete\nCOMPLETED 저장]
+    O -->|저장 실패| P[WARN 로그\n결과는 그대로 반환]
+    O -->|저장 성공| Q[200 반환]
+    P --> Q
+
+    N -->|IdempotencyRetryable 예외| R[Redis release\n키 삭제]
+    R --> S[예외 전파]
+    N -->|그 외 예외| T[키 유지\n예외 전파]
+```
+
+### JDBC 저장소
+
+```mermaid
+flowchart TD
+    A[요청 수신] --> B{Idempotency-Key\n헤더 확인}
+    B -->|없음| C[400 Bad Request]
+    B -->|있음| D[INSERT IGNORE\n유니크 제약으로 원자적 선점]
+
+    D -->|INSERT 성공\n1 row affected| N[비즈니스 로직 실행\n@Transactional과 같은 트랜잭션]
+    D -->|INSERT 실패\n0 row affected| H[SELECT 조회]
+
+    H --> I{기존 상태}
+    I -->|bodyHash 불일치| J[422 Unprocessable Entity]
+    I -->|IN_PROGRESS| K[409 Conflict]
+    I -->|COMPLETED\nschemaVersion 불일치| L[DELETE 후 재실행]
+    I -->|COMPLETED\nschemaVersion 일치| M[캐시된 응답 재생]
+    L --> N
+
+    N -->|성공\n트랜잭션 커밋| O[UPDATE → COMPLETED]
+    O --> Q[200 반환]
+
+    N -->|IdempotencyRetryable 예외\n트랜잭션 롤백| R[DELETE\n키 삭제]
+    R --> S[예외 전파]
+    N -->|그 외 예외\n트랜잭션 롤백| T[키 유지\n예외 전파]
+```
+
+> **JDBC가 더 강한 멱등성을 보장하는 이유**: 비즈니스 로직과 같은 트랜잭션으로 묶이므로
+> "커밋은 됐는데 COMPLETED 기록이 없는" 공백이 구조적으로 발생하지 않는다.
+
+## 보장하는 것 / 보장하지 않는 것
+
+### 보장하는 것
+
+| 상황 | 동작 |
+|---|---|
+| 같은 키 + 같은 바디 재요청 (처리 완료 후) | 캐시된 응답 재생, 메서드 재실행 없음 |
+| 같은 키 동시 요청 | 하나만 실행, 나머지는 409 반환 |
+| 같은 키 + 다른 바디 | 422로 거부 |
+| 배포 후 저장 형식 변경 | schemaVersion 불일치 시 캐시 무시하고 재실행 |
+
+### 보장하지 않는 것
+
+| 상황 | 설명 |
+|---|---|
+| `on-claim-failure: FAIL_OPEN` 시 중복 실행 | Redis 장애 시 중복 체크 없이 통과, 이중 실행 가능 |
+| Redis `complete` 저장 실패 후 재시도 | 결과 저장 실패 시 WARN 로그만 남고 캐시 없음, 재시도 시 재실행됨 |
+| IN_PROGRESS TTL 만료 후 재시도 | TTL 내 처리 못 하면 키 소멸, 재시도 시 새 요청으로 처리됨 |
+| 비-HTTP 컨텍스트 | Kafka, gRPC 등 미지원 |
+| SpEL 기반 키 표현식 | 헤더 값 하나만 키로 사용 |
+
+> **핵심**: 이 라이브러리는 "무조건 한 번"을 보장하지 않는다. Redis 저장소는 장애 시나리오에서
+> 중복 실행 가능성이 있다. 절대 중복 실행이 안 되는 결제 등의 API는 JDBC 저장소를 사용하라.
+
 ## 지원 범위
 
 - HTTP 요청 전용 (Kafka 등 비-HTTP 컨텍스트 미지원)
@@ -133,7 +221,7 @@ public class PaymentPostProcessingException extends RuntimeException { ... }
 - 키는 헤더 값 하나만 사용 (SpEL 키 미지원)
 - TTL은 전역 설정으로 고정 (COMPLETED: `ttl-hours`, IN_PROGRESS: `in-progress-ttl-seconds`)
 - 동시 요청은 REJECT만 지원 (409 반환)
-- Redis 장애 시 동작은 `on-storage-failure`로 선택 (`FAIL_CLOSED`: 요청 실패, `FAIL_OPEN`: 중복 감수하고 통과)
+- 선점 실패 시 동작은 `on-claim-failure`로 선택 (`FAIL_CLOSED`: 요청 실패, `FAIL_OPEN`: 중복 감수하고 통과)
 
 ## 로컬 테스트
 
