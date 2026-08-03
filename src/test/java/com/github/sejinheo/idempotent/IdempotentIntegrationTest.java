@@ -55,6 +55,7 @@ class IdempotentIntegrationTest {
         TestController.dtoCallCount.set(0);
         TestController.voidCallCount.set(0);
         TestController.responseEntityCallCount.set(0);
+        TestController.customTtlCallCount.set(0);
     }
 
     // -----------------------------------------------------------------------
@@ -174,6 +175,29 @@ class IdempotentIntegrationTest {
     }
 
     @Test
+    void 어노테이션_inProgressTtlSeconds_지정시_캐시_정상_동작() throws Exception {
+        String body = """
+                {"name":"apple"}
+                """;
+
+        mockMvc.perform(post("/test/custom-ttl")
+                        .header("Idempotency-Key", "key-custom-ttl")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("apple"));
+
+        mockMvc.perform(post("/test/custom-ttl")
+                        .header("Idempotency-Key", "key-custom-ttl")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("apple"));
+
+        assertThat(TestController.customTtlCallCount.get()).isEqualTo(1);
+    }
+
+    @Test
     void ResponseEntity_DTO_반환_상태코드와_바디_모두_재생() throws Exception {
         String body = """
                 {"name":"apple"}
@@ -211,10 +235,19 @@ class IdempotentIntegrationTest {
         static final AtomicInteger voidCallCount = new AtomicInteger();
         static final AtomicInteger responseEntityCallCount = new AtomicInteger();
 
+        static final AtomicInteger customTtlCallCount = new AtomicInteger();
+
         @Idempotent
         @PostMapping("/dto")
         public TestResponse dto(@RequestBody TestRequest request) {
             dtoCallCount.incrementAndGet();
+            return new TestResponse(request.name());
+        }
+
+        @Idempotent(inProgressTtlSeconds = 120)
+        @PostMapping("/custom-ttl")
+        public TestResponse customTtl(@RequestBody TestRequest request) {
+            customTtlCallCount.incrementAndGet();
             return new TestResponse(request.name());
         }
 

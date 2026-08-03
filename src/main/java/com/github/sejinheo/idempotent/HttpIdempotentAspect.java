@@ -86,7 +86,10 @@ public class HttpIdempotentAspect {
 
         String userId = userIdExtractor.extract(request);
         String redisKey = properties.getKeyPrefix() + userId + ":" + headerKey;
-        Duration inProgressTtl = Duration.ofSeconds(properties.getInProgressTtlSeconds());
+        long ttlSeconds = idempotent.inProgressTtlSeconds() > 0
+                ? idempotent.inProgressTtlSeconds()
+                : properties.getInProgressTtlSeconds();
+        Duration inProgressTtl = Duration.ofSeconds(ttlSeconds);
         Duration completedTtl = Duration.ofHours(properties.getTtlHours());
 
         Object requestBody = findRequestBodyArgument(joinPoint);
