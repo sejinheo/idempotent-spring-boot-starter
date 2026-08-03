@@ -114,6 +114,7 @@ public class HttpIdempotentAspect {
             claimed = storage.tryClaim(redisKey, IdempotencyResult.inProgress(bodyHash), inProgressTtl);
         } catch (IdempotencyStorageException e) {
             if (properties.getOnClaimFailure() == ClaimFailurePolicy.FAIL_OPEN) {
+                log.warn("멱등성 선점 실패로 중복 체크 없이 요청을 통과시킵니다 — 중복 실행 가능성이 있습니다. key={}", redisKey, e);
                 return joinPoint.proceed();
             }
             throw e;

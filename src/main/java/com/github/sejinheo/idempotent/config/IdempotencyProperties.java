@@ -41,8 +41,15 @@ public class IdempotencyProperties {
      * 저장소 선점(tryClaim) 실패 시 동작 정책.
      * FAIL_CLOSED(기본): 예외를 그대로 던져서 요청을 실패 처리한다.
      * FAIL_OPEN: 예외를 무시하고 요청을 통과시킨다. 중복 실행 가능성을 감수한다.
+     *            통과 시 WARN 로그를 남긴다.
      *
      * 결과 저장(complete) 실패는 이 설정과 무관하게 항상 결과를 반환하고 WARN 로그를 남긴다.
+     *
+     * 주의: FAIL_OPEN이 실제로 동작하려면 Redis 커넥션 타임아웃이 충분히 짧아야 한다.
+     * Redis가 죽지 않고 느리기만 해도 타임아웃 전까지는 예외가 발생하지 않으므로
+     * FAIL_OPEN 정책이 의미 없어진다. Spring Data Redis의 커넥션 타임아웃을
+     * 서비스 요구사항에 맞게 짧게 설정할 것을 권장한다.
+     * (예: spring.data.redis.timeout=500ms)
      */
     private final ClaimFailurePolicy onClaimFailure;
 
