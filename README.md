@@ -10,7 +10,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.sejinheo:idempotent-spring-boot-starter:v0.3.0'
+    implementation 'com.github.sejinheo:idempotent-spring-boot-starter:v0.4.0'
 }
 ```
 
@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
     body_hash       VARCHAR(64)  NOT NULL,
     http_status     INT,
     body_json       TEXT,
+    schema_version  INT          NOT NULL DEFAULT 1,
     expires_at      DATETIME     NOT NULL,
     PRIMARY KEY (idempotency_key)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;
@@ -108,8 +109,8 @@ Idempotency-Key: 3f29b6b2-1c2a-4e2e-9a2e-1234567890ab
 | 같은 키 + 같은 바디 재요청 (처리 완료 후) | 캐시된 응답 그대로 재생 |
 | 같은 키 + 같은 바디 재요청 (처리 중) | 409 Conflict |
 | 같은 키 + 다른 바디 | 422 Unprocessable Entity |
-| Redis 장애 (`FAIL_CLOSED`) | 5xx 오류 |
-| Redis 장애 (`FAIL_OPEN`) | 정상 실행 (중복 실행 가능성 감수) |
+| 저장소 장애 (`on-claim-failure: FAIL_CLOSED`) | 5xx 오류 |
+| 저장소 장애 (`on-claim-failure: FAIL_OPEN`) | 정상 실행 (중복 실행 가능성 감수, WARN 로그) |
 
 ## 예외 발생 시 재시도 허용
 
@@ -219,7 +220,8 @@ flowchart TD
 - HTTP 요청 전용 (Kafka 등 비-HTTP 컨텍스트 미지원)
 - 순수 DTO 반환 및 `ResponseEntity<T>` 반환 모두 지원
 - 키는 헤더 값 하나만 사용 (SpEL 키 미지원)
-- TTL은 전역 설정으로 고정 (COMPLETED: `ttl-hours`, IN_PROGRESS: `in-progress-ttl-seconds`)
+- COMPLETED TTL은 전역 설정으로 고정 (`ttl-hours`)
+- IN_PROGRESS TTL은 전역 설정(`in-progress-ttl-seconds`) 기본값으로 쓰거나 `@Idempotent(inProgressTtlSeconds = 60)`으로 메서드별 덮어쓰기 가능
 - 동시 요청은 REJECT만 지원 (409 반환)
 - 선점 실패 시 동작은 `on-claim-failure`로 선택 (`FAIL_CLOSED`: 요청 실패, `FAIL_OPEN`: 중복 감수하고 통과)
 

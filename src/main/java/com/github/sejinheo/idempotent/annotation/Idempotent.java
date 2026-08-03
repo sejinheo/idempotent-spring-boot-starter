@@ -16,7 +16,7 @@ import java.lang.annotation.Target;
  * - TTL은 전역 설정(application.yml의 idempotency.ttl-hours)을 따름
  * - IN_PROGRESS TTL은 어노테이션에서 메서드별로 덮어쓸 수 있음
  * - 동시 요청은 REJECT만 지원 (409 반환)
- * - Redis 장애 시 요청을 실패 처리한다 (FAIL_CLOSED 고정, 503 반환)
+ * - 저장소 장애 시 동작은 on-claim-failure 설정에 따름 (기본: FAIL_CLOSED → 503, FAIL_OPEN → 요청 통과)
  *
  * 사용 예:
  * <pre>
