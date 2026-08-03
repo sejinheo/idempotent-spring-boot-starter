@@ -60,11 +60,10 @@ public class IdempotencyResult {
         return result;
     }
 
-    public IdempotencyResult complete(int httpStatus, String bodyJson) {
+    public void complete(int httpStatus, String bodyJson) {
         this.status = Status.COMPLETED;
         this.httpStatus = httpStatus;
         this.bodyJson = bodyJson;
-        return this;
     }
 
     public Status getStatus() {
