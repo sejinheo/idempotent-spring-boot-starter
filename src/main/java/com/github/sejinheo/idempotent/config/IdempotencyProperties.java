@@ -13,6 +13,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *   in-progress-ttl-seconds: 30
  *   on-claim-failure: FAIL_CLOSED
  *   storage: redis   # redis(기본) 또는 jdbc
+ *   schema-version: 1  # DTO 구조가 바뀌는 배포 시 올린다
  */
 @ConfigurationProperties(prefix = "idempotency")
 public class IdempotencyProperties {
@@ -61,17 +62,26 @@ public class IdempotencyProperties {
      */
     private final StorageType storage;
 
+    /**
+     * 저장 형식의 버전. 배포로 응답 DTO 필드가 바뀐 경우 이 값을 올리면
+     * 기존에 저장된 응답을 캐시 미스로 처리해서 재실행한다.
+     * DTO 구조 변경이 없는 배포에서는 올릴 필요 없다.
+     */
+    private final int schemaVersion;
+
     public IdempotencyProperties(
             @DefaultValue("idempotency:") String keyPrefix,
             @DefaultValue("24") long ttlHours,
             @DefaultValue("30") long inProgressTtlSeconds,
             @DefaultValue("FAIL_CLOSED") ClaimFailurePolicy onClaimFailure,
-            @DefaultValue("REDIS") StorageType storage) {
+            @DefaultValue("REDIS") StorageType storage,
+            @DefaultValue("1") int schemaVersion) {
         this.keyPrefix = keyPrefix;
         this.ttlHours = ttlHours;
         this.inProgressTtlSeconds = inProgressTtlSeconds;
         this.onClaimFailure = onClaimFailure;
         this.storage = storage;
+        this.schemaVersion = schemaVersion;
     }
 
     public String getKeyPrefix() {
@@ -92,5 +102,9 @@ public class IdempotencyProperties {
 
     public StorageType getStorage() {
         return storage;
+    }
+
+    public int getSchemaVersion() {
+        return schemaVersion;
     }
 }

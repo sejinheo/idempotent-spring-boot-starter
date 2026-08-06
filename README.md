@@ -77,7 +77,21 @@ idempotency:
   in-progress-ttl-seconds: 30               # 처리 중 상태 TTL (기본: 30초, API 처리 시간에 맞게 조정)
   on-claim-failure: FAIL_CLOSED             # 선점 실패 시 동작 정책 (기본: FAIL_CLOSED)
   storage: redis                             # redis(기본) 또는 jdbc
+  schema-version: 1                         # 저장 형식 버전 (기본: 1, 응답 DTO 구조 변경 시 올린다)
 ```
+
+> **`schema-version` 사용 시점**: 응답 DTO의 필드가 추가·삭제·이름 변경되는 배포 시 이 값을 올린다.
+> TTL 내 저장된 응답과 현재 DTO 구조가 달라 역직렬화가 깨질 수 있는 경우에 캐시를 무효화한다.
+> 단순 버그픽스나 DTO 변경 없는 배포에서는 올릴 필요 없다.
+
+> **`FAIL_OPEN` 사용 시 주의**: `on-claim-failure: FAIL_OPEN`이 실제로 동작하려면 Redis 커넥션 타임아웃을 짧게 설정해야 한다.
+> Redis가 죽지 않고 느리기만 하면 타임아웃 전까지 예외가 발생하지 않아 FAIL_OPEN 정책이 의미 없어진다.
+> ```yaml
+> spring:
+>   data:
+>     redis:
+>       timeout: 500ms  # 서비스 요구사항에 맞게 조정
+> ```
 
 ## 사용법
 

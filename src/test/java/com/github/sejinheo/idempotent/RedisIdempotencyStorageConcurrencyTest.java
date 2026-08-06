@@ -60,7 +60,7 @@ class RedisIdempotencyStorageConcurrencyTest {
                 try {
                     startLatch.await();
                     boolean claimed = storage.tryClaim(
-                            key, IdempotencyResult.inProgress("same-hash"), Duration.ofSeconds(30));
+                            key, IdempotencyResult.inProgress("same-hash", 1), Duration.ofSeconds(30));
                     if (claimed) {
                         successCount.incrementAndGet();
                     }

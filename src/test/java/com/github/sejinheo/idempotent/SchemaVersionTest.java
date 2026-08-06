@@ -3,7 +3,6 @@ package com.github.sejinheo.idempotent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.sejinheo.idempotent.annotation.Idempotent;
 import com.github.sejinheo.idempotent.spi.UserIdExtractor;
-import com.github.sejinheo.idempotent.storage.IdempotencyResult;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,10 +78,7 @@ class SchemaVersionTest {
         // Redis에 저장된 값의 schemaVersion을 구버전(0)으로 변조
         String redisKey = "idempotency:test-user:key-schema";
         String stored = redisTemplate.opsForValue().get(redisKey);
-        String tampered = stored.replace(
-                "\"schemaVersion\":" + IdempotencyResult.CURRENT_SCHEMA_VERSION,
-                "\"schemaVersion\":0"
-        );
+        String tampered = stored.replace("\"schemaVersion\":1", "\"schemaVersion\":0");
         redisTemplate.opsForValue().set(redisKey, tampered, Duration.ofHours(24));
 
         // 같은 키로 재요청 → schemaVersion 불일치 → 재실행

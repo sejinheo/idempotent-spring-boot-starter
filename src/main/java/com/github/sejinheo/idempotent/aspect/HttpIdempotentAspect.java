@@ -111,7 +111,7 @@ public class HttpIdempotentAspect {
 
         boolean claimed;
         try {
-            claimed = storage.tryClaim(storageKey, IdempotencyResult.inProgress(bodyHash), inProgressTtl);
+            claimed = storage.tryClaim(storageKey, IdempotencyResult.inProgress(bodyHash, properties.getSchemaVersion()), inProgressTtl);
         } catch (IdempotencyStorageException e) {
             if (properties.getOnClaimFailure() == ClaimFailurePolicy.FAIL_OPEN) {
                 log.warn("멱등성 선점 실패로 중복 체크 없이 요청을 통과시킵니다 — 중복 실행 가능성이 있습니다. key={}", storageKey, e);
@@ -135,11 +135,11 @@ public class HttpIdempotentAspect {
             }
 
             // COMPLETED지만 저장 형식 버전이 다르면 캐시 미스로 처리
-            if (existing.getSchemaVersion() != IdempotencyResult.CURRENT_SCHEMA_VERSION) {
+            if (existing.getSchemaVersion() != properties.getSchemaVersion()) {
                 log.warn("저장된 응답의 schemaVersion({})이 현재 버전({})과 달라 재실행합니다. key={}",
-                        existing.getSchemaVersion(), IdempotencyResult.CURRENT_SCHEMA_VERSION, storageKey);
+                        existing.getSchemaVersion(), properties.getSchemaVersion(), storageKey);
                 storage.release(storageKey);
-                claimed = storage.tryClaim(storageKey, IdempotencyResult.inProgress(bodyHash), inProgressTtl);
+                claimed = storage.tryClaim(storageKey, IdempotencyResult.inProgress(bodyHash, properties.getSchemaVersion()), inProgressTtl);
                 if (!claimed) {
                     throw new IdempotencyConflictException("이미 처리 중인 요청입니다. 잠시 후 다시 시도해주세요.");
                 }
@@ -153,6 +153,7 @@ public class HttpIdempotentAspect {
             Object result = joinPoint.proceed();
             IdempotencyResult completed = new IdempotencyResult();
             completed.setBodyHash(bodyHash);
+            completed.setSchemaVersion(properties.getSchemaVersion());
             if (result instanceof ResponseEntity<?> responseEntity) {
                 int statusCode = responseEntity.getStatusCode().value();
                 Object body = responseEntity.getBody();

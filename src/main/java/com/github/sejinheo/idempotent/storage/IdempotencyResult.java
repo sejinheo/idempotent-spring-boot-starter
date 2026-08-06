@@ -14,18 +14,16 @@ package com.github.sejinheo.idempotent.storage;
  * schemaVersion: 저장 형식의 버전. 배포로 DTO 필드가 바뀐 경우 저장된 응답을
  * 역직렬화할 때 조용히 깨지는 문제를 방지한다. COMPLETED 재생 시 현재 버전과
  * 다르면 캐시 미스로 처리해서 키를 삭제하고 재실행한다.
- * 저장 형식이 바뀔 때마다 CURRENT_SCHEMA_VERSION을 올린다.
+ * DTO 구조가 바뀌는 배포 시 application.yml의 idempotency.schema-version을 올린다.
  */
 public class IdempotencyResult {
-
-    public static final int CURRENT_SCHEMA_VERSION = 1;
 
     public enum Status {
         IN_PROGRESS,
         COMPLETED
     }
 
-    private int schemaVersion = CURRENT_SCHEMA_VERSION;
+    private int schemaVersion;
 
     private Status status;
 
@@ -53,10 +51,11 @@ public class IdempotencyResult {
         this.schemaVersion = schemaVersion;
     }
 
-    public static IdempotencyResult inProgress(String bodyHash) {
+    public static IdempotencyResult inProgress(String bodyHash, int schemaVersion) {
         IdempotencyResult result = new IdempotencyResult();
         result.status = Status.IN_PROGRESS;
         result.bodyHash = bodyHash;
+        result.schemaVersion = schemaVersion;
         return result;
     }
 
